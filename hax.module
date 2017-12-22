@@ -1,0 +1,151 @@
+<?php
+/**
+ * @file
+ * Headless Authoring eXperience, all we do is accept calls and make things haxable in the first place.
+ */
+
+/**
+ * Implements hook_permission().
+ */
+function hax_permission() {
+  return array(
+    'use hax' =>  array(
+      'title' => t('Use HAX editor'),
+      'description' => t('Advanced authoring experience that is pulled in from hax capable web components.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function hax_menu() {
+  $items['hax-node-save/%node/%'] = array(
+    'page callback' => '_hax_node_save',
+    'page arguments' => array(1, 2),
+    'type' => MENU_CALLBACK,
+    'access callback' => '_hax_node_access',
+    'access arguments' => array('update', 1),
+  );
+  $items['node/%node/hax'] = array(
+    'title' => 'HAX mode',
+    'description' => 'Edit the node with HAX',
+    'page callback' => '_hax_node_form',
+    'page arguments' => array(1),
+    'type' => MENU_LOCAL_TASK,
+    'context' => MENU_CONTEXT_PAGE | MENU_CONTEXT_INLINE,
+    'access callback' => '_hax_node_access',
+    'access arguments' => array('update', 1),
+  );
+    $items['admin/config/content/hax'] = array(
+    'title' => 'HAX',
+    'description' => 'Settings for basic customizations to HAX.',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('hax_settings'),
+    'type' => MENU_NORMAL_ITEM,
+    'access arguments' => array('administer site configuration'),
+  );
+  return $items;
+}
+
+
+/**
+ * Helper function to make outline designer settings more obvious.
+ */
+function hax_settings($form, &$form_state) {
+  $config = config('hax.settings');
+  $form['hax_offset_left'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Offset'),
+    '#default_value' => $config->get('hax_offset_left'),
+    '#description' => "Helps with theme compatibility when positioning the context menu. Adjust this if HAX context menu doesn't correctly align with the side of your content when editing. Value is in pixels but should not include px. Some themes that mess with box-model may or may not have this issue.",
+  );
+  // collapse default state
+  $form['hax_autoload_element_list'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Elements to autoload'),
+    '#default_value' => $config->get('hax_autoload_element_list'),
+    '#description' => "This allows for auto-loading elements known to play nice with HAX. If you've written any webcomponents that won't automatically be loaded into the page via that module this allows you to attempt to auto-load them when HAX loads. For example, if you have a video-player element in your bower_components directory and want it to load on this interface, this would be a simple way to do that. Spaces only between elements, no comma",
+  );
+  return system_settings_form($form);
+}
+
+/**
+ * Implements hook_config_info().
+ */
+function hax_config_info() {
+  return array(
+    'hax.settings' => array(
+      'label' => t('hax settings'),
+      'group' => t('Configuration'),
+    ),
+  );
+}
+
+/**
+ * Callback to save just the body field.
+ */
+function _hax_node_save($node, $token) {
+  // ensure we had data PUT here and it is valid
+  if ($_SERVER['REQUEST_METHOD'] == 'PUT' && backdrop_valid_token($token, 'hax')) {
+    // load the data from input stream
+    $body = file_get_contents("php://input");
+    $node->body['und'][0]['value'] = $body;
+    node_save($node);
+    // send back happy headers
+    backdrop_add_http_header('Content-Type', 'application/json');
+    // define status
+    backdrop_add_http_header('Status', 200);
+    $return = array(
+      'status' => 200,
+      'message' => t('Save successful!'),
+      'data' => $node,
+    );
+    // output the response as json
+    print backdrop_json_output($return);
+  }
+}
+
+/**
+ * Permission + Node access check.
+ */
+function _hax_node_access($op, $node) {
+  if (user_access('use hax') && node_access($op, $node)) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Present the node form but wrap the content in hax-body tag
+ * @param  [type] $node [description]
+ * @return [type]       [description]
+ */
+function _hax_node_form($node) {
+  $config = config('hax.settings');
+  // set page title
+  backdrop_set_title(t('HAX edit @title', array('@title' => $node->title)), PASS_THROUGH);
+  // fake a component to get it into the head of the document, heavy weighting
+  $component = new stdClass();
+  $component->machine_name = 'cms-hax';
+  $component->file = backdrop_get_path('module', 'hax') . '/bower_components/cms-hax/cms-hax.html';
+  _webcomponents_add_to_head($component, 10000);
+  // generate autoload list
+  $elementstring = $config->get('hax_autoload_element_list');
+  // blow up based on space
+  $elements = explode(' ', $elementstring);
+  $components = '';
+  foreach ($elements as $element) {
+    // sanity check
+    if (!empty($element)) {
+      $components .= '<' . $element . ' slot="autoloader">' . '</' . $element . '>';
+    }
+  }
+  // write content to screen, wrapped in tag to do all the work
+  $content = '
+  <cms-hax end-point="' . base_path() . 'hax-node-save/' . $node->nid . '/' . backdrop_get_token('hax') . '" body-offset-left="' . $config->get('hax_offset_left') . '">'
+  . $components .
+    check_markup($node->body['und'][0]['value'], $node->body['und'][0]['format'])
+  .'</cms-hax>';
+  return $content;
+}
