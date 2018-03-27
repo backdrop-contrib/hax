@@ -4,6 +4,8 @@
  * Headless Authoring eXperience, all we do is accept calls and make things haxable in the first place.
  */
 
+include_once 'HAXService.php';
+
 /**
  * Implements hook_permission().
  */
@@ -27,6 +29,13 @@ function hax_menu() {
     'access callback' => '_hax_node_access',
     'access arguments' => array('update', 1),
   );
+  $items['hax-app-store/%'] = array(
+    'page callback' => '_hax_load_app_store',
+    'page arguments' => array(1),
+    'type' => MENU_CALLBACK,
+    'access callback' => 'user_access',
+    'access arguments' => array('use hax'),
+  );
   $items['node/%node/hax'] = array(
     'title' => 'HAX mode',
     'description' => 'Edit the node with HAX',
@@ -41,18 +50,40 @@ function hax_menu() {
     'title' => 'HAX',
     'description' => 'Settings for basic customizations to HAX.',
     'page callback' => 'backdrop_get_form',
-    'page arguments' => array('hax_settings'),
+    'page arguments' => array('hax_settings_form'),
     'type' => MENU_NORMAL_ITEM,
     'access arguments' => array('administer site configuration'),
   );
   return $items;
 }
 
+/**
+ * Callback to assemble the hax app store
+ */
+function _hax_load_app_store($token) {
+  // ensure we had data PUT here and it is valid
+  if (backdrop_valid_token($token, 'hax')) {
+    $appStore = module_invoke_all('hax_app_store');
+    backdrop_alter('hax_app_store', $appStore);
+    // send back happy headers
+    backdrop_add_http_header('Content-Type', 'application/json');
+    // define status
+    backdrop_add_http_header('Status', 200);
+    $return = array(
+      'status' => 200,
+      'apps' => $appStore,
+    );
+    // output the response as json
+    print backdrop_json_output($return);
+    exit;
+  }
+}
+
 
 /**
  * Helper function to make outline designer settings more obvious.
  */
-function hax_settings($form, &$form_state) {
+function hax_settings_form($form, $form_state) {
   $config = config('hax.settings');
   $form['hax_offset_left'] = array(
     '#type' => 'textfield',
@@ -67,7 +98,41 @@ function hax_settings($form, &$form_state) {
     '#default_value' => $config->get('hax_autoload_element_list'),
     '#description' => "This allows for auto-loading elements known to play nice with HAX. If you've written any webcomponents that won't automatically be loaded into the page via that module this allows you to attempt to auto-load them when HAX loads. For example, if you have a video-player element in your bower_components directory and want it to load on this interface, this would be a simple way to do that. Spaces only between elements, no comma",
   );
-  return system_settings_form($form);
+  $hax = new HAXService();
+  $baseApps = $hax->baseSupportedApps();
+  foreach ($baseApps as $key => $app) {
+    $form['hax_' . $key . '_key'] = array(
+      '#type' => 'textfield',
+      '#title' => t('@name API key', array('@name' => $app['name'])),
+      '#default_value' => $config->get('hax_' . $key . '_key'),
+      '#description' => t('See') . ' ' . l(t('@name developer docs', array('@name' => $app['name'])), $app['docs']) . ' ' . t('for details'),
+    );
+  }
+  // Add a submit button
+  $form['actions']['#type'] = 'actions';
+  $form['actions']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for module_settings_form().
+ */
+function hax_settings_form_submit($form, &$form_state) {
+  $config = config('hax.settings');
+  $config->set('hax_offset_left', $form_state['values']['hax_offset_left']);
+  $config->set('hax_autoload_element_list', $form_state['values']['hax_autoload_element_list']);
+  $hax = new HAXService();
+  $baseApps = $hax->baseSupportedApps();
+  foreach ($baseApps as $key => $app) {
+    $config->set('hax_' . $key . '_key', $form_state['values']['hax_' . $key . '_key']);
+  }
+  $config->save();
+
+  backdrop_set_message(t('The configuration options have been saved.'));
 }
 
 /**
@@ -141,11 +206,31 @@ function _hax_node_form($node) {
       $components .= '<' . $element . ' slot="autoloader">' . '</' . $element . '>';
     }
   }
+  $appStoreConnection = array(
+    'url' => base_path() . 'hax-app-store/' . backdrop_get_token('hax'),
+  );
   // write content to screen, wrapped in tag to do all the work
   $content = '
-  <cms-hax end-point="' . base_path() . 'hax-node-save/' . $node->nid . '/' . backdrop_get_token('hax') . '" body-offset-left="' . $config->get('hax_offset_left') . '">'
+  <cms-hax open-default end-point="' . base_path() . 'hax-node-save/' . $node->nid . '/' . backdrop_get_token('hax') . '" body-offset-left="' . $config->get('hax_offset_left') . '" app-store-connection=' . "'" . json_encode($appStoreConnection) . "'" . '>'
   . $components .
     check_markup($node->body['und'][0]['value'], $node->body['und'][0]['format'])
   .'</cms-hax>';
   return $content;
+}
+
+/**
+ * Implements hook_hax_app_store().
+ */
+function hax_hax_app_store() {
+  $config = config('hax.settings');
+  $hax = new HAXService();
+  $apikeys = array();
+  $baseApps = $hax->baseSupportedApps();
+  foreach ($baseApps as $key => $app) {
+    if ($config->get('hax_' . $key . '_key') != '') {
+      $apikeys[$key] = $config->get('hax_' . $key . '_key');
+    }
+  }
+  $json = $hax->loadBaseAppStore($apikeys);
+  return $json;
 }
