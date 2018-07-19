@@ -113,6 +113,7 @@ function hax_hax_stax() {
  * Implements hook_hax_autoloader().
  */
 function hax_hax_autoloader() {
+  $config = config('hax.settings');
   // generate autoload list
   $autoloaderstring = $config->get('hax_autoload_element_list');
   // blow up based on space
