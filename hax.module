@@ -114,7 +114,7 @@ function hax_hax_stax() {
  */
 function hax_hax_autoloader() {
   // generate autoload list
-  $autoloaderstring = variable_get('hax_autoload_element_list', HAX_DEFAULT_ELEMENTS);
+  $autoloaderstring = $config->get('hax_autoload_element_list');
   // blow up based on space
   $autoloader = explode(' ', $autoloaderstring);
   return $autoloader;
