@@ -1,5 +1,6 @@
 {
   "_config_name": "hax.settings",
   "hax_autoload_element_list": "video-player wikipedia-query pdf-element lrn-table media-image",
+  "hax_autoload_element_node_view": true,
   "hax_offset_left": "0"
 }
