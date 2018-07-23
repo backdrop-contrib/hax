@@ -190,6 +190,29 @@ function hax_config_info() {
 }
 
 /**
+ * Implements hook_node_view().
+ */
+function hax_node_view($node, $view_mode, $langcode) {
+  $config = config('hax.settings');
+  if ($view_mode == 'full' && $config->get('hax_autoload_element_node_view')) {
+    backdrop_add_css(backdrop_get_path('module', 'hax') . '/hax-compat.css');
+    // generate autoload list
+    $elementstring = $config->get('hax_autoload_element_list');
+    // blow up based on space
+    $elements = explode(' ', $elementstring);
+    // pull in from webcomponents location
+    $base = libraries_get_path('webcomponents') . '/polymer/bower_components/';
+    foreach ($elements as $element) {
+      $component = new stdClass();
+      $component->machine_name = $element;
+      // pull in from webcomponents location
+      $component->file = $base . $element . '/' . $element . '.html';
+      _webcomponents_add_to_head($component, 10001);
+    }
+  }
+}
+
+/**
  * Callback to save just the body field.
  */
 function _hax_node_save($node, $token) {
@@ -240,24 +263,13 @@ function _hax_node_form($node) {
   $component->machine_name = 'cms-hax';
   $component->file = libraries_get_path('webcomponents') . '/polymer/bower_components/cms-hax/cms-hax.html';
   _webcomponents_add_to_head($component, 10000);
-  // generate autoload list
-  $elementstring = $config->get('hax_autoload_element_list');
-  // blow up based on space
-  $elements = explode(' ', $elementstring);
-  $components = '';
-  foreach ($elements as $element) {
-    // sanity check
-    if (!empty($element)) {
-      $components .= '<' . $element . ' slot="autoloader">' . '</' . $element . '>';
-    }
-  }
   $appStoreConnection = array(
     'url' => base_path() . 'hax-app-store/' . backdrop_get_token('hax'),
   );
   // write content to screen, wrapped in tag to do all the work
   $content = '
   <cms-hax open-default end-point="' . base_path() . 'hax-node-save/' . $node->nid . '/' . backdrop_get_token('hax') . '" body-offset-left="' . $config->get('hax_offset_left') . '" app-store-connection=' . "'" . json_encode($appStoreConnection) . "'" . '>'
-  . $components . '<template>' . 
+  . '<template>' . 
     check_markup($node->body['und'][0]['value'], $node->body['und'][0]['format'])
   .'</template></cms-hax>';
   return $content;
