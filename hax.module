@@ -147,18 +147,13 @@ function hax_settings_form($form, $form_state) {
     '#default_value' => $config->get('hax_offset_left'),
     '#description' => "Helps with theme compatibility when positioning the context menu. Adjust this if HAX context menu doesn't correctly align with the side of your content when editing. Value is in pixels but should not include px. Some themes that mess with box-model may or may not have this issue.",
   );
-  $form['hax_autoload_element_node_view'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Autoload these elements on node view'),
-    '#default_value' => $config->get('hax_autoload_element_node_view'),
-    '#description' => "This helps maintain consistency for rendering output.",
-  );
   // collapse default state
   $form['hax_autoload_element_list'] = array(
     '#type' => 'textfield',
     '#title' => t('Elements to autoload'),
     '#default_value' => $config->get('hax_autoload_element_list'),
     '#description' => "This allows for auto-loading elements known to play nice with HAX. If you've written any webcomponents that won't automatically be loaded into the page via that module this allows you to attempt to auto-load them when HAX loads. For example, if you have a video-player element in your bower_components directory and want it to load on this interface, this would be a simple way to do that. Spaces only between elements, no comma",
+    '#maxlength' => 1000
   );
   $hax = new HAXService();
   $baseApps = $hax->baseSupportedApps();
@@ -186,7 +181,6 @@ function hax_settings_form($form, $form_state) {
 function hax_settings_form_submit($form, &$form_state) {
   $config = config('hax.settings');
   $config->set('hax_offset_left', $form_state['values']['hax_offset_left']);
-  $config->set('hax_autoload_element_node_view', $form_state['values']['hax_autoload_element_node_view']);
   $config->set('hax_autoload_element_list', $form_state['values']['hax_autoload_element_list']);
   $hax = new HAXService();
   $baseApps = $hax->baseSupportedApps();
@@ -208,27 +202,6 @@ function hax_config_info() {
       'group' => t('Configuration'),
     ),
   );
-}
-
-/**
- * Implements hook_node_view().
- */
-function hax_node_view($node, $view_mode, $langcode) {
-  $config = config('hax.settings');
-  if ($view_mode == 'full' && $config->get('hax_autoload_element_node_view')) {
-    // generate autoload list
-    $elements = module_invoke_all('hax_autoloader');
-    backdrop_alter('hax_autoloader', $elements);
-    // pull in from webcomponents location
-    $base = libraries_get_path('webcomponents') . '/polymer/bower_components/';
-    foreach ($elements as $element) {
-      $component = new stdClass();
-      $component->machine_name = $element;
-      // pull in from webcomponents location
-      $component->file = $base . $element . '/' . $element . '.html';
-      _webcomponents_add_to_head($component, 10001);
-    }
-  }
 }
 
 /**
