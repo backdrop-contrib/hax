@@ -1,3 +1,63 @@
+HAX
+======================
+
+Headless Authoring eXperience, for BackDrop CMS. This module provides the
+same consistent authoring experience afforded to other CMSs and headless
+apps. Leveraging the W3C web component standard, HAX is able to transform
+authoring locally while saving to a format that is rich and sustainable.
+
+Learn more about HAX APIs and integrations at https://haxtheweb.org/
+
+
+Requirements
+------------
+
+This module requires that the following modules are also enabled:
+
+ * [Web components](https://github.com/backdrop-contrib/webcomponents)
+
+Installation
+------------
+
+- Install this module using the official Backdrop CMS instructions at
+  https://backdropcms.org/guide/modules.
+
+- Visit the configuration page under Administration > Configuration > Content >
+  HAX (admin/config/content/hax) to modify the included elements or to load
+  your own custom web component CDN to supply the editor.
+
+Documentation
+-------------
+
+Additional documentation is located in the Wiki:
+https://haxtheweb.org/
+
+Issues
+------
+
+Bugs and Feature requests should be reported in the Issue Queue:
+https://github.com/backdrop-contrib/hax/issues.
+
+Current Maintainers
+-------------------
+
+- [Bryan Ollendyke](https://github.com/btopro).
+- Seeking additional maintainers.
+
+Credits
+-------
+
+- Ported to Backdrop CMS by [btopro](https://github.com/btopro).
+
+License
+-------
+
+This repo is GPL v2 software.
+See the LICENSE.txt file in this directory for complete text.
+
+Standard HAX Readme info
+-------
+
 ## Usage
 
 This should give you the dependencies you need to get going.
