@@ -7,13 +7,6 @@
 include_once 'HAXService.php';
 
 /**
- * Implements hook_init().
- */
-function hax_init() {
-  backdrop_add_css(backdrop_get_path('module', 'hax') . '/hax-compat.css');
-}
-
-/**
  * Implements hook_permission().
  */
 function hax_permission() {
@@ -356,6 +349,7 @@ function _hax_file_save($token) {
 function _hax_node_form($node) {
   $config = config('hax.settings');
   // set page title
+  backdrop_add_css(backdrop_get_path('module', 'hax') . '/hax-compat.css');
   backdrop_set_title(t('HAX edit @title', array('@title' => $node->title)), PASS_THROUGH);
   $appStoreConnection = array(
     'url' => base_path() . 'hax-app-store/' . backdrop_get_token('hax'),
