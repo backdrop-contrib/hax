@@ -1,6 +1,8 @@
 HAX
 ======================
 
+HAX (Headless Authoring eXperience) is a <a href="https://developer.mozilla.org/en-US/docs/Web/Web_Components">web components</a> driven editing experience that works across platforms. To add new "bricks" to HAX either pick from the 100 or so that the HAX core team has developed or create your own web components and add a callback method to it to <code>static get haxProperties()</code> (<a href="https://haxtheweb.org/documentation-1/hax-development/hax-schema">docs</a>).
+
 Headless Authoring eXperience, for BackDrop CMS. This module provides the
 same consistent authoring experience afforded to other CMSs and headless
 apps. Leveraging the W3C web component standard, HAX is able to transform
